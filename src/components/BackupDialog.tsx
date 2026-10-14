@@ -47,7 +47,7 @@ export function BackupDialog({ document, saving, onImport, onClose, timeZone }: 
       <input ref={inputRef} type="file" accept=".json,application/json" className="visually-hidden" aria-label="选择备份文件" onChange={event => void selectFile(event.target.files?.[0])} />
       {imported ? <div className="import-preview"><strong>{filename}</strong><p>已检查：{imported.length} 条有效日程</p><div className="import-modes"><label><input type="radio" name="import-mode" checked={mode === 'merge'} onChange={() => setMode('merge')} />合并导入<span>保留现有日程，相同编号不覆盖</span></label><label><input type="radio" name="import-mode" checked={mode === 'replace'} onChange={() => setMode('replace')} />替换现有日程<span>用备份的 {imported.length} 条日程替换现有 {document.events.length} 条</span></label></div><button className="primary-button full" disabled={saving} onClick={() => void apply()}><RefreshCw size={15} />{saving ? '正在导入…' : mode === 'replace' ? '确认替换并导入' : '确认合并并导入'}</button></div> : null}
       {error ? <div className="form-error" role="alert"><CircleAlert size={16} />{error}</div> : null}{success ? <div className="backup-success" role="status"><Check size={16} />{success}</div> : null}
-      <p className="timezone-note">日历当前显示{zoneLabel(timeZone)}。备份保留两地时区设置和每条日程的录入时区；旧备份仍可导入，实际时间不会被重新解释。</p>
+      <p className="timezone-note">日历当前显示{zoneLabel(timeZone)}。备份保留显示、对照时区设置和每条日程的录入时区；旧备份仍可导入，实际时间不会被重新解释。</p>
     </div><div className="dialog-footer"><span /><button className="outline-button" onClick={onClose} disabled={saving}>完成</button></div>
   </Dialog>;
 }

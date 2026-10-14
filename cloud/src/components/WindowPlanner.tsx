@@ -2,21 +2,23 @@ import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import { ChevronLeft, ChevronRight, Clock3, CircleAlert } from 'lucide-react';
 import { layoutSegments } from '../../shared/domain.mjs';
 import { selectSlotStart } from '../../shared/planning.mjs';
-import { BEIJING, CHICAGO, addDays, calendarSegments, dateKey, dayLabel, dayStart, durationLabel, otherZone, rangeWithZone, rangeZoneLabel, timeLabel, zoneLabel } from '../lib/dates';
+import { addDays, calendarSegments, canonicalTimeZone, dateKey, dayLabel, dayStart, durationLabel, rangeWithZone, rangeZoneLabel, timeLabel, zoneLabel } from '../lib/dates';
+import { TimeZonePicker } from './TimeZonePicker';
 import { availableSlots, eventLabel, occupiedEvents } from '../lib/events';
 import type { ScheduleEvent, TimeZone } from '../types';
 
 interface Slot { start: string; end: string; minutes: number; }
 interface Segment { event: ScheduleEvent; startMinute: number; endMinute: number; lane: number; lanes: number; }
-const PLANNER_ZONES: TimeZone[] = [CHICAGO, BEIJING];
 
-export function WindowPlanner({ exam, events, plannedStart, disabled, onSelect }: {
+export function WindowPlanner({ exam, events, plannedStart, disabled, onSelect, defaultTimeZone, comparisonTimeZone }: {
+  defaultTimeZone: TimeZone; comparisonTimeZone: TimeZone;
   exam: ScheduleEvent; events: ScheduleEvent[]; plannedStart: string | null; disabled: boolean;
   onSelect: (instant: string) => void;
 }) {
   const dayId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [timeZone, setTimeZone] = useState<TimeZone>(CHICAGO);
+  const [timeZone, setTimeZone] = useState<TimeZone>(defaultTimeZone);
+  const alternateZone = canonicalTimeZone(timeZone) === canonicalTimeZone(defaultTimeZone) ? comparisonTimeZone : defaultTimeZone;
   const slots = availableSlots(exam, events);
   const firstDay = dateKey(exam.start, timeZone);
   const lastDay = dateKey(new Date(+new Date(exam.end) - 1), timeZone);
@@ -73,7 +75,7 @@ export function WindowPlanner({ exam, events, plannedStart, disabled, onSelect }
 
   return <section className="window-planner" aria-label="安排笔试时间轴">
     <div className="planner-heading"><div><strong><Clock3 size={16} />对照日程安排</strong><p>右侧空闲处点选开始，预留完整的 {durationLabel(exam.durationMinutes!)}。</p></div><span>{zoneLabel(timeZone)}</span></div>
-    <div className="planner-zone-switch" role="group" aria-label="时间轴显示时区"><span>时间轴时区</span>{PLANNER_ZONES.map(zone => <button key={zone} type="button" disabled={disabled} aria-pressed={timeZone === zone} onClick={() => changeTimeZone(zone)}>{zoneLabel(zone)}</button>)}</div>
+    <div className="planner-zone-switch"><TimeZonePicker label="时间轴显示时区" value={timeZone} onChange={changeTimeZone} disabled={disabled} preferred={[defaultTimeZone, comparisonTimeZone]} /></div>
     <div className="planner-date-nav">
       <button type="button" aria-label="时间轴前一天" disabled={disabled || dayIndex === 0} onClick={() => setChosenDay(days[dayIndex - 1])}><ChevronLeft size={16} /></button>
       <label htmlFor={dayId} className="visually-hidden">时间轴日期</label>
@@ -91,7 +93,7 @@ export function WindowPlanner({ exam, events, plannedStart, disabled, onSelect }
         })}</div>
         <div className="planner-track planner-existing">
           {ticks.map(minute => <i className="planner-hour-line" key={minute} style={{ top: position(minute) }} />)}
-          {segments.filter(segment => segment.endMinute > startMinute && segment.startMinute < endMinute).map(segment => <div key={segment.event.id} className={`planner-event ${segment.event.color}`} style={{ ...clip(segment.startMinute, segment.endMinute), left: `calc(${segment.lane / segment.lanes * 100}% + 3px)`, width: `calc(${100 / segment.lanes}% - 6px)` }} title={`${eventLabel(segment.event)}\n${dayLabel(segment.event.start, false, timeZone)} ${rangeWithZone(segment.event.start, segment.event.end, timeZone)}\n${dayLabel(segment.event.start, false, otherZone(timeZone))} ${rangeWithZone(segment.event.start, segment.event.end, otherZone(timeZone))}`}><strong>{eventLabel(segment.event)}</strong>{segment.endMinute - segment.startMinute >= 60 ? <><span>{timeLabel(segment.event.start, timeZone)} – {timeLabel(segment.event.end, timeZone)}</span><small>（{rangeZoneLabel(segment.event.start, segment.event.end, timeZone)}）</small></> : null}</div>)}
+          {segments.filter(segment => segment.endMinute > startMinute && segment.startMinute < endMinute).map(segment => <div key={segment.event.id} className={`planner-event ${segment.event.color}`} style={{ ...clip(segment.startMinute, segment.endMinute), left: `calc(${segment.lane / segment.lanes * 100}% + 3px)`, width: `calc(${100 / segment.lanes}% - 6px)` }} title={`${eventLabel(segment.event)}\n${dayLabel(segment.event.start, false, timeZone)} ${rangeWithZone(segment.event.start, segment.event.end, timeZone)}\n${dayLabel(segment.event.start, false, alternateZone)} ${rangeWithZone(segment.event.start, segment.event.end, alternateZone)}`}><strong>{eventLabel(segment.event)}</strong>{segment.endMinute - segment.startMinute >= 60 ? <><span>{timeLabel(segment.event.start, timeZone)} – {timeLabel(segment.event.end, timeZone)}</span><small>（{rangeZoneLabel(segment.event.start, segment.event.end, timeZone)}）</small></> : null}</div>)}
         </div>
         <div className="planner-track planner-current">
           <div className="planner-window" style={clip((opening - startOfDay) / 60000, (closing - startOfDay) / 60000)} />
@@ -110,7 +112,7 @@ export function WindowPlanner({ exam, events, plannedStart, disabled, onSelect }
     <div className={`planner-selection ${conflicts.length || outsideWindow ? 'planner-selection-conflict' : ''}`} aria-live="polite">{plannedStart && planEnd ? <>
       <strong>{conflicts.length || outsideWindow ? <><CircleAlert size={14} />{outsideWindow ? '作答超出窗口，请调整' : `与 ${conflicts.length} 条日程重叠`}</> : '已选作答时间 · 保存后生效'}</strong>
       <span>{dayLabel(plannedStart, false, timeZone)} {rangeWithZone(plannedStart, planEnd, timeZone)}</span>
-      <small>{dayLabel(plannedStart, false, otherZone(timeZone))} {rangeWithZone(plannedStart, planEnd, otherZone(timeZone))}</small>
+      <small>{dayLabel(plannedStart, false, alternateZone)} {rangeWithZone(plannedStart, planEnd, alternateZone)}</small>
       <div className="planner-adjust"><button type="button" disabled={disabled || +new Date(plannedStart) - 900000 < +new Date(exam.start)} onClick={() => onSelect(new Date(+new Date(plannedStart) - 900000).toISOString())}>提前 15 分钟</button><button type="button" disabled={disabled || +new Date(planEnd) + 900000 > +new Date(exam.end)} onClick={() => onSelect(new Date(+new Date(plannedStart) + 900000).toISOString())}>推后 15 分钟</button></div>
     </> : <span>{daySlots.length ? '绿色空档可容纳整场笔试。点击预览，也可手动填写开始时间。' : '当天没有足够的连续空档，可切换日期查看。'}</span>}</div>
     <div className="planner-day-agenda"><strong>当天已有安排</strong>{segments.length ? segments.map(({ event }) => <div key={event.id}><b><i className={`color-dot ${event.color}`} />{eventLabel(event)}</b><span>{dayLabel(event.start, false, timeZone)} {rangeWithZone(event.start, event.end, timeZone)}</span></div>) : <p>当天没有已确定的安排。</p>}{pending.length ? <p>还有 {pending.length} 场笔试待安排：{pending.map(eventLabel).join('、')}。未选作答时间前不占用日历。</p> : null}</div>

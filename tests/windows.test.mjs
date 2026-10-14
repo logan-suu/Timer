@@ -87,7 +87,7 @@ test('a two hour planned exam across fall-back uses elapsed time rather than wal
 test('window metadata, pending status and chosen time survive restart and backup', async t => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'career-window-test-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const settings = { displayTimeZone: 'America/Chicago', inputTimeZone: 'Asia/Shanghai' };
+  const settings = { displayTimeZone: 'America/Chicago', inputTimeZone: 'Asia/Shanghai', comparisonTimeZone: 'Asia/Shanghai' };
   const store = new ScheduleStore(dir);
   const pending = validateEvents([window()])[0];
   await store.write({ expectedRevision: 0, demoDismissed: true, events: [pending], settings });

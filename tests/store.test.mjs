@@ -60,7 +60,7 @@ test('unrecoverable files are preserved and never silently reset', async t => {
 
 test('timezone settings and source timezone survive a fresh process/store', async t => {
   const { dir, store } = await fixture(t);
-  const settings = { displayTimeZone: 'Asia/Shanghai', inputTimeZone: 'America/Chicago' };
+  const settings = { displayTimeZone: 'Asia/Shanghai', inputTimeZone: 'America/Chicago', comparisonTimeZone: 'America/Chicago' };
   await store.write({ expectedRevision: 0, demoDismissed: true, events: [{ ...event, timeZone: 'Asia/Shanghai' }], settings });
   const restored = await new ScheduleStore(dir).read();
   assert.deepEqual(restored.settings, settings);
@@ -72,7 +72,7 @@ test('legacy documents receive timezone defaults without reinterpreting old inst
   await writeFile(path.join(dir, 'schedule.json'), JSON.stringify({ version: 1, revision: 2, demoDismissed: true, events: [event], updatedAt: null }));
   const store = new ScheduleStore(dir);
   const restored = await store.read();
-  assert.deepEqual(restored.settings, { displayTimeZone: 'America/Chicago', inputTimeZone: 'Asia/Shanghai' });
+  assert.deepEqual(restored.settings, { displayTimeZone: 'America/Chicago', inputTimeZone: 'Asia/Shanghai', comparisonTimeZone: 'Asia/Shanghai' });
   assert.equal(restored.events[0].start, '2026-10-09T06:00:00.000Z');
   await store.write({ expectedRevision: 2, demoDismissed: true, events: restored.events });
   assert.equal((await new ScheduleStore(dir).read()).events[0].start, restored.events[0].start);

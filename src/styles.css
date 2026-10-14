@@ -646,3 +646,55 @@ input::placeholder, textarea::placeholder { color: #acb4c3; }
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+/* Worldwide timezone controls, shared by the calendar, editor and planner. */
+.time-zone-bar { height: auto; min-height: 90px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 15px; align-items: center; }
+.world-zone-controls { display: grid; grid-template-columns: minmax(100px, 1fr) 28px minmax(100px, 1fr) auto; align-items: end; gap: 7px; min-width: 0; }
+.zone-picker { position: relative; min-width: 0; width: 100%; text-align: left; }
+.zone-picker > label { display: block; font-size: 10px; line-height: 1.5; color: #6b7890; margin-bottom: 5px; }
+.zone-picker .zone-picker-trigger { display: flex; align-items: center; gap: 7px; justify-content: space-between; width: 100%; min-width: 0; text-align: left; border: 1px solid #dfe3ed; border-radius: 6px; background: #fff; padding: 7px 9px; min-height: 42px; color: #63578d; }
+.zone-picker-trigger > span, .zone-options button > span { min-width: 0; }
+.zone-picker-trigger strong { display: block; font-size: 11px; font-weight: 550; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.zone-picker-trigger small { display: block; font-size: 8px; line-height: 1.5; color: #8c93a7; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.zone-picker-trigger:hover, .zone-picker-trigger[aria-expanded="true"] { border-color: #bcb1e1; background: #fcfaff; }
+.swap-zones { margin-bottom: 6px; width: 28px; height: 30px; }
+.device-zone-button { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 9px; color: #7664a0; background: #f4f0fc; border: 0; border-radius: 5px; padding: 8px; margin-bottom: 6px; white-space: nowrap; }
+.device-zone-button:disabled { cursor: default; opacity: .55; }
+.time-zone-bar .zone-comparison { grid-column: 1 / -1; display: block; white-space: normal; overflow-wrap: anywhere; font-size: 9px; color: #8590a3; line-height: 1.6; }
+.time-zone-bar .dual-clock { font-size: 9px; max-width: 270px; white-space: normal; line-height: 1.6; }
+.zone-picker-panel { position: absolute; top: calc(100% + 5px); left: 0; z-index: 45; width: min(330px, calc(100vw - 44px)); background: #fff; border: 1px solid #dcdfea; border-radius: 9px; box-shadow: 0 8px 32px #1e294826; overflow: hidden; }
+.align-end .zone-picker-panel { left: auto; right: 0; }
+.zone-search { display: flex; align-items: center; gap: 7px; padding: 10px; color: #8a90a5; border-bottom: 1px solid var(--border); }
+.zone-search input { border: 0; box-shadow: none; outline: 0; width: 100%; min-width: 0; padding: 4px; font-size: 11px; color: var(--text); background: transparent; }
+.zone-search input:focus { border: 0; box-shadow: none; }
+.zone-options { max-height: 230px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.zone-picker .zone-options button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; border: 0; border-radius: 0; margin: 0; padding: 9px 12px; background: #fff; color: #59657d; text-align: left; }
+.zone-options button:hover, .zone-options button:focus-visible, .zone-options button[aria-selected="true"] { background: #f1edfb; outline-offset: -3px; }
+.zone-options strong { display: block; font-size: 11px; font-weight: 500; line-height: 1.5; }
+.zone-options small { display: block; font-size: 9px; color: #8a93a5; margin-top: 2px; }
+.zone-options > p, .zone-picker-note { padding: 10px 12px; font-size: 10px; color: #929aab; line-height: 1.5; margin: 0; }
+.zone-picker-note { border-top: 1px solid var(--border); background: #fafbfe; font-size: 9px; }
+.input-time-zone { align-items: center; }
+.input-time-zone > .zone-picker { flex: 1; max-width: 280px; }
+.input-time-zone > span { padding-bottom: 0; flex: 1; line-height: 1.7; }
+.planner-zone-switch > .zone-picker { max-width: 100%; }
+.planner-heading { flex-wrap: wrap; }
+.planner-heading > span { overflow-wrap: anywhere; }
+.conversion-preview > div { min-width: 0; }
+.conversion-preview b, .planned-preview span { overflow-wrap: anywhere; }
+@media (max-width: 1200px) {
+  .time-zone-bar { grid-template-columns: minmax(0, 1fr); }
+  .time-zone-bar .dual-clock { max-width: none; flex-direction: row; flex-wrap: wrap; gap: 5px 15px; }
+}
+@media (max-width: 760px) {
+  .time-zone-bar { padding: 11px 17px; gap: 9px; }
+  .world-zone-controls { grid-template-columns: minmax(0, 1fr) 25px minmax(0, 1fr); gap: 6px; }
+  .world-zone-controls > .device-zone-button { grid-column: 1 / -1; justify-self: start; padding: 5px 7px; margin: 0; }
+  .world-zone-controls > .swap-zones { width: 25px; }
+  .zone-picker-trigger strong { font-size: 10px; }
+  .zone-picker-trigger small { font-size: 8px; }
+  .zone-picker > label { font-size: 9px; }
+  .time-zone-bar .dual-clock { flex-direction: column; gap: 4px; }
+  .input-time-zone > .zone-picker { max-width: none; }
+  .input-time-zone > span { align-self: flex-start; }
+}

@@ -9,7 +9,7 @@ import { BackupDialog } from './components/BackupDialog';
 import { TimeZoneBar } from './components/TimeZoneBar';
 import { useSchedule } from './hooks/useSchedule';
 import { useCurrentTime } from './hooks/useCurrentTime';
-import { addDays, addMonths, atTime, dateKey, dayLabel, dayParts, dayStart, startOfWeek, CHICAGO, BEIJING, zoneLabel } from './lib/dates';
+import { addDays, addMonths, atTime, dateKey, dayLabel, dayParts, dayStart, startOfWeek, browserDefaultSettings, validateSettings, zoneLabel } from './lib/dates';
 import { createDemo } from './lib/demo';
 import { eventsBetween, findConflicts, displayStart } from './lib/events';
 import type { EventType, Navigation, ScheduleEvent, TimeZone } from './types';
@@ -21,9 +21,12 @@ export default function App() {
   const [backupOpen, setBackupOpen] = useState(false);
   const schedule = useSchedule(!!editor || backupOpen);
   const cloud = schedule.document?.storage === 'cloud';
-  const timeZone = schedule.document?.settings?.displayTimeZone || CHICAGO;
-  const inputTimeZone = schedule.document?.settings?.inputTimeZone || BEIJING;
-  const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date(), CHICAGO));
+  const newUserSettings = useMemo(() => browserDefaultSettings(), []);
+  const settings = schedule.document && schedule.document.revision > 0 ? validateSettings(schedule.document.settings) : newUserSettings;
+  const timeZone = settings.displayTimeZone;
+  const inputTimeZone = settings.inputTimeZone;
+  const comparisonTimeZone = settings.comparisonTimeZone;
+  const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date(), newUserSettings.displayTimeZone));
   const [month, setMonth] = useState(() => `${selectedDate.slice(0, 7)}-01`);
   const initialized = useRef(false);
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function App() {
   async function saveEvent(event: ScheduleEvent) {
     const personalEvents = schedule.document?.events || [];
     const exists = personalEvents.some(item => item.id === event.id);
-    await schedule.save(exists ? personalEvents.map(item => item.id === event.id ? event : item) : [...personalEvents, event], true, { displayTimeZone: timeZone, inputTimeZone: event.timeZone || inputTimeZone });
+    await schedule.save(exists ? personalEvents.map(item => item.id === event.id ? event : item) : [...personalEvents, event], true, { ...settings, inputTimeZone: event.timeZone || inputTimeZone });
     setEditor(null); selectDate(dateKey(displayStart(event), timeZone));
     setToast(`日程已${exists ? '更新' : '添加'}，并保存到${cloud ? '云端' : '本地'}`);
   }
@@ -82,11 +85,11 @@ export default function App() {
   }
   async function dismissDemo() {
     setActionError('');
-    try { await schedule.save([]); setToast('开始你的秋招规划吧'); }
+    try { await schedule.save([], true, settings); setToast('开始你的秋招规划吧'); }
     catch (cause) { setActionError((cause as Error).message); }
   }
-  async function changeTimeZone(zone: TimeZone) {
-    if (!schedule.document || timeZone === zone) return;
+  async function changeTimeZone(zone: TimeZone, comparison: TimeZone) {
+    if (!schedule.document || (timeZone === zone && comparisonTimeZone === comparison)) return;
     setActionError('');
     // Follow the selected day's event across midnight and week boundaries when changing zones.
     const anchor = events.find(event => event.id === focusId) || events
@@ -94,7 +97,7 @@ export default function App() {
       .sort((a, b) => +new Date(displayStart(a)) - +new Date(displayStart(b)))[0];
     const nextDate = anchor ? dateKey(displayStart(anchor), zone) : selectedDate === today ? dateKey(new Date(now), zone) : selectedDate;
     try {
-      await schedule.save(schedule.document.events, schedule.document.demoDismissed, { ...schedule.document.settings, displayTimeZone: zone });
+      await schedule.save(schedule.document.events, schedule.document.demoDismissed, { ...settings, displayTimeZone: zone, comparisonTimeZone: comparison });
       selectDate(nextDate);
       setToast(`日历已切换为${zoneLabel(zone)}`);
     } catch (cause) { setActionError((cause as Error).message); }
@@ -111,14 +114,14 @@ export default function App() {
       <div className="content-area">
         <div className="schedule-area">
           <div className="calendar-toolbar"><div className="period-controls"><button className="outline-button icon-only" aria-label="上一周" onClick={() => moveWeek(-1)}><ChevronLeft size={18} /></button><strong>{selectedParts.year}年{selectedParts.month}月</strong><button className="outline-button icon-only" aria-label="下一周" onClick={() => moveWeek(1)}><ChevronRight size={18} /></button><button className="outline-button this-week" onClick={() => selectDate(today)}>本周</button></div><span className="week-range">{dayLabel(week, false)} – {dayLabel(addDays(week, 6), false)}</span><div className="view-switch" aria-label="视图选择"><button className={view === 'week' && navigation === 'calendar' ? 'active' : ''} onClick={() => { setView('week'); setNavigation('calendar'); }} aria-pressed={view === 'week' && navigation === 'calendar'}>周视图</button><button className={view === 'list' && navigation === 'calendar' ? 'active' : ''} onClick={() => { setView('list'); setNavigation('calendar'); }} aria-pressed={view === 'list' && navigation === 'calendar'}>列表</button></div></div>
-          <TimeZoneBar now={now} timeZone={timeZone} onChange={zone => void changeTimeZone(zone)} disabled={!schedule.document || schedule.saving} />
-          {schedule.loading && !schedule.document ? <div className="view-empty"><RotateCw size={28} className="spin" /><h3>正在读取日程…</h3></div> : !schedule.document ? <div className="view-empty" role="alert"><CircleAlert size={30} /><h3>暂时无法读取日程</h3><p>{schedule.error}</p><button className="primary-button" onClick={() => void schedule.load()}>重新读取</button></div> : navigation === 'conflicts' ? <ConflictsView now={now} timeZone={timeZone} conflicts={conflicts} onEdit={edit} onLocate={locate} /> : navigation === 'all' || view === 'list' ? <Agenda now={now} timeZone={timeZone} events={navigation === 'all' ? visibleEvents : visibleWeekEvents} conflictIds={conflictIds} onEdit={edit} search={search} onSearch={setSearch} all={navigation === 'all'} /> : <WeekCalendar now={now} timeZone={timeZone} week={week} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={visibleWeekEvents} conflictIds={conflictIds} onEdit={edit} onCreate={date => setEditor({ event: null, date })} focusId={focusId} />}
+          <TimeZoneBar now={now} timeZone={timeZone} comparisonTimeZone={comparisonTimeZone} onChange={(zone, comparison) => void changeTimeZone(zone, comparison)} disabled={!schedule.document || schedule.saving} />
+          {schedule.loading && !schedule.document ? <div className="view-empty"><RotateCw size={28} className="spin" /><h3>正在读取日程…</h3></div> : !schedule.document ? <div className="view-empty" role="alert"><CircleAlert size={30} /><h3>暂时无法读取日程</h3><p>{schedule.error}</p><button className="primary-button" onClick={() => void schedule.load()}>重新读取</button></div> : navigation === 'conflicts' ? <ConflictsView now={now} comparisonTimeZone={comparisonTimeZone} timeZone={timeZone} conflicts={conflicts} onEdit={edit} onLocate={locate} /> : navigation === 'all' || view === 'list' ? <Agenda now={now} comparisonTimeZone={comparisonTimeZone} timeZone={timeZone} events={navigation === 'all' ? visibleEvents : visibleWeekEvents} conflictIds={conflictIds} onEdit={edit} search={search} onSearch={setSearch} all={navigation === 'all'} /> : <WeekCalendar now={now} comparisonTimeZone={comparisonTimeZone} timeZone={timeZone} week={week} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={visibleWeekEvents} conflictIds={conflictIds} onEdit={edit} onCreate={date => setEditor({ event: null, date })} focusId={focusId} />}
         </div>
-        <Overview now={now} timeZone={timeZone} weekEvents={weekEvents} conflicts={weekConflicts} events={events} onEdit={edit} onConflicts={() => setNavigation('conflicts')} />
+        <Overview now={now} comparisonTimeZone={comparisonTimeZone} timeZone={timeZone} weekEvents={weekEvents} conflicts={weekConflicts} events={events} onEdit={edit} onConflicts={() => setNavigation('conflicts')} />
       </div>
     </main>
-    {editor ? <EventEditor key={editor.event?.id || editor.date.toISOString()} event={editor.event} date={editor.date} timeZone={timeZone} inputTimeZone={inputTimeZone} events={events} demo={demo} saving={schedule.saving} onSave={saveEvent} onDelete={deleteEvent} onClose={() => setEditor(null)} /> : null}
-    {backupOpen && schedule.document ? <BackupDialog timeZone={timeZone} document={schedule.document} saving={schedule.saving} onImport={async (imported, settings) => { await schedule.save(imported, true, settings); setToast('备份已导入并保存'); if (imported[0]) selectDate(dateKey(imported[0].start, settings?.displayTimeZone || timeZone)); }} onClose={() => setBackupOpen(false)} /> : null}
+    {editor ? <EventEditor key={editor.event?.id || editor.date.toISOString()} event={editor.event} date={editor.date} comparisonTimeZone={comparisonTimeZone} timeZone={timeZone} inputTimeZone={inputTimeZone} events={events} demo={demo} saving={schedule.saving} onSave={saveEvent} onDelete={deleteEvent} onClose={() => setEditor(null)} /> : null}
+    {backupOpen && schedule.document ? <BackupDialog timeZone={timeZone} document={schedule.document} saving={schedule.saving} onImport={async (imported, importedSettings) => { await schedule.save(imported, true, importedSettings || settings); setToast('备份已导入并保存'); if (imported[0]) selectDate(dateKey(imported[0].start, importedSettings?.displayTimeZone || timeZone)); }} onClose={() => setBackupOpen(false)} /> : null}
     {toast ? <div className="toast" role="status"><span><Check size={15} /></span>{toast}<button className="icon-button" aria-label="关闭提示" onClick={() => setToast('')}><X size={16} /></button></div> : null}
   </div>;
 }

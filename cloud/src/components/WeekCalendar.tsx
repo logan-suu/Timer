@@ -2,14 +2,15 @@ import { useEffect, useRef } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { eventStatus, isPastStatus } from '../../shared/status.mjs';
 import { layoutSegments } from '../../shared/domain.mjs';
-import { addDays, calendarSegments, dateKey, dayParts, dayStart, rangeWithZone, rangeZoneLabel, timeLabel, timeWithZone, alternateTime, otherZone, zoneLabel, WEEKDAYS } from '../lib/dates';
+import { addDays, calendarSegments, dateKey, dayParts, dayStart, rangeWithZone, rangeZoneLabel, timeLabel, timeWithZone, alternateTime, zoneLabel, WEEKDAYS } from '../lib/dates';
 import { eventLabel, occupiedEvents } from '../lib/events';
 import { WindowStrip } from './WindowStrip';
 import { EventStatus, STATUS_LABELS } from './EventStatus';
 import { EVENT_TYPES, type ScheduleEvent, type TimeZone } from '../types';
 
 interface Segment { event: ScheduleEvent; startMinute: number; endMinute: number; lane: number; lanes: number; }
-export function WeekCalendar({ week, selectedDate, onSelectDate, events, conflictIds, onEdit, onCreate, focusId, timeZone, now }: {
+export function WeekCalendar({ week, selectedDate, onSelectDate, events, conflictIds, onEdit, onCreate, focusId, timeZone, comparisonTimeZone, now }: {
+  comparisonTimeZone: TimeZone;
   now: number;
   week: string; selectedDate: string; onSelectDate: (day: string) => void; events: ScheduleEvent[]; conflictIds: Set<string>; timeZone: TimeZone;
   onEdit: (event: ScheduleEvent) => void; onCreate: (date: Date) => void; focusId: string | null;
@@ -44,7 +45,7 @@ export function WeekCalendar({ week, selectedDate, onSelectDate, events, conflic
   return <div className={`week-calendar ${events.some(event => event.timing === 'window') ? 'has-windows' : ''}`}>
     <WindowStrip events={events} timeZone={timeZone} onEdit={onEdit} now={now} />
     <div className="mobile-day-selector">{days.map((day, index) => <button key={day} className={day === selectedDate ? 'active' : ''} onClick={() => onSelectDate(day)} aria-label={`选择${WEEKDAYS[index]} ${dayParts(day).day}日`}><span>{WEEKDAYS[index].replace('周', '')}</span><strong>{dayParts(day).day}</strong></button>)}</div>
-    <div className="calendar-day-heading"><div className="time-heading"><i className="desktop-axis-label">{hasDstWeek ? '经过时间' : zoneLabel(timeZone)}</i><i className="mobile-axis-label">{zoneLabel(timeZone)}</i></div>{days.map((day, index) => <div key={day} className={`day-heading ${day === selectedDate ? 'selected-day' : ''}`}><span>{WEEKDAYS[index]}{durations[index] !== 1440 ? <small className="dst-day-note">夏令时切换</small> : null}</span><div><strong className={today === day ? 'today-number' : ''}>{dayParts(day).day}</strong><span className="date-month">{dayParts(day).month}月</span></div></div>)}</div>
+    <div className="calendar-day-heading"><div className="time-heading"><i className="desktop-axis-label">{hasDstWeek ? '经过时间' : zoneLabel(timeZone)}</i><i className="mobile-axis-label">{zoneLabel(timeZone)}</i></div>{days.map((day, index) => <div key={day} className={`day-heading ${day === selectedDate ? 'selected-day' : ''}`}><span>{WEEKDAYS[index]}{durations[index] !== 1440 ? <small className="dst-day-note">时制切换</small> : null}</span><div><strong className={today === day ? 'today-number' : ''}>{dayParts(day).day}</strong><span className="date-month">{dayParts(day).month}月</span></div></div>)}</div>
     <div className="calendar-scroll" ref={scrollRef}>
       <div className="calendar-grid" style={{ height }}>
         <div className="time-axis">{hours.map(hour => {
@@ -64,10 +65,12 @@ export function WeekCalendar({ week, selectedDate, onSelectDate, events, conflic
             const conflict = conflictIds.has(event.id);
             const eventHeight = Math.max(3, endMinute - startMinute - 3);
             const primary = rangeWithZone(event.start, event.end, timeZone);
-            const secondary = alternateTime(event.start, event.end, otherZone(timeZone));
+            const secondary = alternateTime(event.start, event.end, comparisonTimeZone);
+            const segmentStart = new Date(+dayStart(day, timeZone) + startMinute * 60000);
+            const segmentEnd = new Date(+dayStart(day, timeZone) + endMinute * 60000);
             const status = eventStatus(event, now);
             return <button key={event.id} className={`calendar-event ${event.color} ${isPastStatus(status) ? 'event-past' : ''} ${status === 'ongoing' ? 'event-ongoing' : ''} ${conflict ? 'event-conflict' : ''} ${focusId === event.id ? 'event-focused' : ''} ${eventHeight < 74 ? 'compact-event' : 'has-event-status'}`} style={{ top: startMinute - startHour * 60 + 2, height: eventHeight, left: `calc(${lane / lanes * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)` }} onClick={() => onEdit(events.find(item => item.id === event.id)!)} aria-label={`${eventLabel(event)}，${STATUS_LABELS[status]}${event.timing === 'window' ? '，已安排作答' : ''}，${primary}，${secondary}${conflict ? '，有时间冲突' : ''}`} title={`${eventLabel(event)} · ${STATUS_LABELS[status]}\n${dateKey(event.start, timeZone)} ${primary}\n${secondary}${conflict ? '\n与其他日程有冲突，点击查看' : ''}`}>
-              {eventHeight >= 30 ? <span className="event-clock"><span className="event-time">{timeLabel(event.start, timeZone)}<span> – {timeLabel(event.end, timeZone)}</span></span><small className="event-zone">（{rangeZoneLabel(event.start, event.end, timeZone)}）</small></span> : null}
+              {eventHeight >= 30 ? <span className="event-clock"><span className="event-time">{timeLabel(segmentStart, timeZone)}<span> – {endMinute === durations[index] ? '24:00' : timeLabel(segmentEnd, timeZone)}</span></span><small className="event-zone">（{rangeZoneLabel(segmentStart, segmentEnd, timeZone)}）</small></span> : null}
               {eventHeight >= 14 ? <strong className="event-title">{eventHeight < 74 ? `${STATUS_LABELS[status]} · ` : ''}{eventLabel(event)}</strong> : null}
               {eventHeight >= 110 && lanes === 1 ? <span className="event-secondary-time">{secondary}</span> : null}
               {eventHeight >= 74 ? <EventStatus event={event} now={now} /> : null}
@@ -80,6 +83,6 @@ export function WeekCalendar({ week, selectedDate, onSelectDate, events, conflic
         </div>)}
       </div>
     </div>
-    <div className="calendar-footer"><span><span className="tiny-conflict-dot" />红色描边表示时间冲突</span><span>灰色底表示已结束 · {hasDstWeek ? '夏令时切换周，以各列时刻为准' : '点击查看两地时间'}</span></div>
+    <div className="calendar-footer"><span><span className="tiny-conflict-dot" />红色描边表示时间冲突</span><span>灰色底表示已结束 · {hasDstWeek ? '时制切换周，以各列时刻为准' : '点击查看两地时间'}</span></div>
   </div>;
 }

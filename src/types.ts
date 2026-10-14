@@ -1,7 +1,7 @@
 export type EventType = 'exam' | 'interview' | 'prep' | 'other';
 export type EventColor = 'purple' | 'blue' | 'green' | 'orange' | 'pink' | 'teal';
-export type TimeZone = 'America/Chicago' | 'Asia/Shanghai';
-export interface PlannerSettings { displayTimeZone: TimeZone; inputTimeZone: TimeZone; }
+export type TimeZone = string;
+export interface PlannerSettings { displayTimeZone: TimeZone; inputTimeZone: TimeZone; comparisonTimeZone: TimeZone; }
 export interface ScheduleEvent {
   id: string;
   title: string;

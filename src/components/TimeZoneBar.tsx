@@ -1,12 +1,18 @@
-import { Globe2 } from 'lucide-react';
-import { BEIJING, CHICAGO, dayLabel, timeWithZone, offsetHoursApart } from '../lib/dates';
+import { ArrowLeftRight, LocateFixed } from 'lucide-react';
+import { canonicalTimeZone, dayLabel, deviceTimeZone, differenceLabel, timeWithZone, zoneLabel } from '../lib/dates';
+import { TimeZonePicker } from './TimeZonePicker';
 import type { TimeZone } from '../types';
 
-export function TimeZoneBar({ timeZone, onChange, disabled, now: instant }: { timeZone: TimeZone; onChange: (zone: TimeZone) => void; disabled: boolean; now: number; }) {
+export function TimeZoneBar({ timeZone, comparisonTimeZone, onChange, disabled, now: instant }: { timeZone: TimeZone; comparisonTimeZone: TimeZone; onChange: (zone: TimeZone, comparison: TimeZone) => void; disabled: boolean; now: number; }) {
   const now = new Date(instant);
+  const localZone = deviceTimeZone();
+  function change(zone: TimeZone, comparison: TimeZone) {
+    if (canonicalTimeZone(zone) === canonicalTimeZone(comparison)) onChange(comparisonTimeZone, timeZone);
+    else onChange(zone, comparison);
+  }
   return <div className="time-zone-bar">
-    <div className="time-zone-switch"><Globe2 size={15} /><span>日历显示时区</span><div>{[[CHICAGO, '芝加哥'], [BEIJING, '北京']].map(([zone, label]) => <button key={zone} aria-pressed={timeZone === zone} disabled={disabled} onClick={() => onChange(zone as TimeZone)}>{label}</button>)}</div></div>
-    <span className="zone-comparison">北京当前快 {offsetHoursApart(now)} 小时 · 自动处理夏令时</span>
-    <div className="dual-clock"><span>{dayLabel(now, false, CHICAGO)} {timeWithZone(now, CHICAGO)}</span><span>{dayLabel(now, false, BEIJING)} {timeWithZone(now, BEIJING)}</span></div>
+    <div className="world-zone-controls"><TimeZonePicker label="日历显示时区" value={timeZone} onChange={zone => change(zone, comparisonTimeZone)} disabled={disabled} preferred={[comparisonTimeZone]} /><button className="icon-button swap-zones" aria-label="交换日历与对照时区" title="交换日历与对照时区" disabled={disabled} onClick={() => onChange(comparisonTimeZone, timeZone)}><ArrowLeftRight size={16} /></button><TimeZonePicker label="对照时区" value={comparisonTimeZone} onChange={zone => change(timeZone, zone)} disabled={disabled} preferred={[timeZone]} align="end" /><button className="device-zone-button" disabled={disabled || canonicalTimeZone(timeZone) === canonicalTimeZone(localZone)} onClick={() => change(localZone, comparisonTimeZone)} title={`设备时区：${zoneLabel(localZone)}（${localZone}）`}><LocateFixed size={14} />使用设备时区</button></div>
+    <div className="dual-clock"><span>{dayLabel(now, false, timeZone)} {timeWithZone(now, timeZone)}</span><span>{dayLabel(now, false, comparisonTimeZone)} {timeWithZone(now, comparisonTimeZone)}</span></div>
+    <span className="zone-comparison">{differenceLabel(now, timeZone, comparisonTimeZone)} · 自动处理夏令时</span>
   </div>;
 }

@@ -1,4 +1,4 @@
-import { TIME_ZONES } from './timezones.mjs';
+import { isValidTimeZone } from './timezones.mjs';
 
 export const EVENT_TYPES = ['exam', 'interview', 'prep', 'other'];
 export const EVENT_COLORS = ['purple', 'blue', 'green', 'orange', 'pink', 'teal'];
@@ -30,7 +30,7 @@ export function validateEvents(input) {
     ids.add(value.id);
     if (!value.title.trim() || value.title.length > 120) throw new Error('日程名称需要填写，且不能超过 120 个字符。');
     if (!EVENT_TYPES.includes(value.type) || !EVENT_COLORS.includes(value.color)) throw new Error('日程类型或颜色不正确。');
-    if (value.timeZone != null && !TIME_ZONES.includes(value.timeZone)) throw new Error('日程录入时区不正确。');
+    if (value.timeZone != null && !isValidTimeZone(value.timeZone)) throw new Error('日程录入时区不正确。');
     const start = new Date(value.start);
     const end = new Date(value.end);
     if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(value.start) || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value.end)) throw new Error('备份中的日程时间必须包含时区或 UTC 偏移。');
