@@ -1,0 +1,33 @@
+# Local data and backups
+.data/
+*.backup.json
+schedule*.json
+
+# Dependencies and generated files
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.next/
+.vinext/
+out/
+
+# Local credentials and deployment identity
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+**/.openai/hosting.json
+.wrangler/
+.sites-runtime/
+.codex/
+.agents/
+.vercel/
+
+# Local tooling
+.DS_Store
+*.log
+outputs/
+work/
+github-public/
